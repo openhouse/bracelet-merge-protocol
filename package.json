@@ -1,0 +1,74 @@
+{
+  "name": "bracelet-merge-protocol",
+  "version": "0.1.0",
+  "description": "Bracelet Merge Protocol: a blind-dealer / sighted-judge simulator for merging sorted bracelets.",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "bracelet-merge-protocol": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "docs"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "cli": "tsx src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/cli.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
+    "demo": "tsx src/cli.ts --fixture=canonical --metrics",
+    "demo:blind": "tsx src/cli.ts --fixture=canonical --hide-values --metrics",
+    "demo:desk": "tsx src/cli.ts --fixture=desk --metrics",
+    "demo:files": "tsx src/cli.ts --runs=10 --count=12 --seed=jamie --summary-only --metrics-jsonl=out/events.jsonl --metrics-csv=out/turns.csv --summary-json=out/summary.json",
+    "trial": "tsx src/cli.ts --runs=100 --count=24 --seed=test --summary-only",
+    "smoke": "npm run check && npm run demo && npm run demo:blind && npm run demo:desk && npm run demo:files && npm run trial",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "sorting",
+    "cyclic-order",
+    "bracelet",
+    "active-ranking",
+    "comparison-oracle",
+    "simulation",
+    "metrics",
+    "llm-judge"
+  ],
+  "dependencies": {
+    "commander": "^14.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.14",
+    "eslint": "^9.39.1",
+    "prettier": "^3.7.4",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.0",
+    "vitest": "^4.0.14"
+  }
+}
