@@ -1,12 +1,14 @@
 import { makeRunSeed } from "../domain/rng.js";
 import { aggregateRuns } from "../metrics/summarize.js";
 import type { AggregateMetric, MetricEvent, RunMetric, TurnMetric } from "../metrics/types.js";
+import type { JudgePromptTraceEvent } from "../prompt/types.js";
 import { runOnce, type RunOnceOptions, type RunOnceResult } from "./runOnce.js";
 export type RunManyResult = {
   runs: RunOnceResult[];
   turns: TurnMetric[];
   summaries: RunMetric[];
   events: MetricEvent[];
+  promptEvents: JudgePromptTraceEvent[];
   aggregate: AggregateMetric;
 };
 export async function runMany(
@@ -29,6 +31,7 @@ export async function runMany(
     summaries,
     turns: runs.flatMap((r) => r.turns),
     events: runs.flatMap((r) => r.events),
+    promptEvents: runs.flatMap((r) => r.promptEvents),
     aggregate: aggregateRuns(summaries),
   };
 }

@@ -20,6 +20,8 @@ import type {
   MergeMode,
 } from "../domain/types.js";
 import type { MetricEvent, RunMetric, TurnMetric } from "../metrics/types.js";
+import { loadJudgeTemplate } from "../prompt/render.js";
+import type { JudgePromptTraceEvent } from "../prompt/types.js";
 import { canonicalFixture, deskFixture } from "../domain/fixtures.js";
 export type RunOnceOptions = {
   seed?: string;
@@ -35,6 +37,9 @@ export type RunOnceOptions = {
   judge?: Judge | undefined;
   auditOracle?: AuditOracle | undefined;
   order?: readonly BeadValue[] | undefined;
+  judgePromptTrace?: boolean | undefined;
+  judgePromptValues?: boolean | undefined;
+  judgeTemplatePath?: string | undefined;
 };
 export type RunOnceResult = {
   finalBracelet: Bracelet;
@@ -43,6 +48,7 @@ export type RunOnceResult = {
   summary: RunMetric;
   events: MetricEvent[];
   sortedValues: BeadValue[];
+  promptEvents: JudgePromptTraceEvent[];
 };
 export async function runOnce(options: RunOnceOptions = {}): Promise<RunOnceResult> {
   const seed = options.seed ?? "ring-demo";
@@ -71,6 +77,10 @@ export async function runOnce(options: RunOnceOptions = {}): Promise<RunOnceResu
       : (options.auditOracle ?? (options.judge ? undefined : defaultOracle));
   const turns: TurnMetric[] = [];
   const events: MetricEvent[] = [];
+  const promptEvents: JudgePromptTraceEvent[] = [];
+  const promptTemplate = options.judgePromptTrace
+    ? loadJudgeTemplate(options.judgeTemplatePath)
+    : undefined;
   let mergeIndex = 0;
   while (bracelets.length > 1) {
     const pick = chooseNextMerge(bracelets, hostPolicy);
@@ -93,8 +103,17 @@ export async function runOnce(options: RunOnceOptions = {}): Promise<RunOnceResu
       hideValues: options.hideValues,
       hiddenValues,
       auditOracle,
+      judgePrompt: promptTemplate
+        ? {
+            includeValues: Boolean(options.judgePromptValues),
+            template: promptTemplate.template,
+            templateName: promptTemplate.name,
+            templateVersion: promptTemplate.version,
+          }
+        : undefined,
     });
     turns.push(...result.turns);
+    promptEvents.push(...result.promptEvents);
     events.push(...result.turns, {
       event: "merge",
       schemaVersion: 1,
@@ -126,6 +145,7 @@ export async function runOnce(options: RunOnceOptions = {}): Promise<RunOnceResu
     turns,
     summary,
     events,
+    promptEvents,
     sortedValues: canonicalSortedValues(
       finalBracelet.ids,
       hiddenValues.valueById,

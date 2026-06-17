@@ -19,6 +19,8 @@ describe("dealer blindness", () => {
       "canonicalSortedValues",
       "../domain/values",
       "../domain/sortedness",
+      "../prompt/",
+      "handlebars",
     ];
     for (const file of ["BlindDealer.ts", "frontier.ts", "hypotheses.ts", "validEdges.ts"]) {
       const text = readFileSync(join(process.cwd(), "src", "dealer", file), "utf8");
