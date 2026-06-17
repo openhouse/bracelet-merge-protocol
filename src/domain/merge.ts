@@ -21,7 +21,15 @@ import type { TurnMetric } from "../metrics/types.js";
 import { protocolName } from "../metrics/types.js";
 import { estimateTokens } from "../metrics/tokenEstimate.js";
 import { isCyclicallySortedUnoriented } from "./sortedness.js";
-export type MergeResult = { bracelet: Bracelet; turns: TurnMetric[] };
+import { buildJudgePromptContext } from "../prompt/context.js";
+import { renderJudgePrompt } from "../prompt/render.js";
+import { buildJudgePromptTraceEvent } from "../prompt/events.js";
+import type { JudgePromptTraceEvent } from "../prompt/types.js";
+export type MergeResult = {
+  bracelet: Bracelet;
+  turns: TurnMetric[];
+  promptEvents: JudgePromptTraceEvent[];
+};
 export async function mergeBracelets(args: {
   target: Bracelet;
   source: Bracelet;
@@ -32,6 +40,9 @@ export async function mergeBracelets(args: {
   hideValues?: boolean | undefined;
   hiddenValues?: HiddenValues | undefined;
   auditOracle?: AuditOracle | undefined;
+  judgePrompt?:
+    | { includeValues?: boolean; template: string; templateName: string; templateVersion: string }
+    | undefined;
 }): Promise<MergeResult> {
   const dealer = new BlindDealer({
     beadIds: [...args.target.ids, ...args.source.ids],
@@ -41,6 +52,7 @@ export async function mergeBracelets(args: {
   });
   let currentCycle: BeadId[] = [...args.target.ids];
   const turns: TurnMetric[] = [];
+  const promptEvents: JudgePromptTraceEvent[] = [];
   for (let i = 0; i < args.source.ids.length; i++) {
     const bead = args.source.ids[i]!;
     const before = [...currentCycle];
@@ -60,14 +72,29 @@ export async function mergeBracelets(args: {
       sourceCycle: args.source.ids,
       sourcePrefixAfterInsertion: sourcePrefix,
     });
-    const decision = await args.judge.chooseEdge({
+    const judgeRequest = {
       bead,
       offeredEdges: dealerResult.offeredEdges,
       currentCycle: before,
       sourceCycle: args.source.ids,
       sourcePrefix,
       turnContext,
-    });
+    };
+    const promptContext = args.judgePrompt
+      ? buildJudgePromptContext({
+          request: judgeRequest,
+          ...(args.hiddenValues ? { hiddenValues: args.hiddenValues } : {}),
+          ...(args.judgePrompt.includeValues === undefined
+            ? {}
+            : { includeValues: args.judgePrompt.includeValues }),
+          templateName: args.judgePrompt.templateName,
+          templateVersion: args.judgePrompt.templateVersion,
+        })
+      : undefined;
+    const renderedPrompt = promptContext
+      ? renderJudgePrompt(promptContext, args.judgePrompt!.template)
+      : undefined;
+    const decision = await args.judge.chooseEdge(judgeRequest);
     if (!dealerResult.offeredEdges.some((e) => e.key === decision.chosenEdge.key))
       throw new OffMenuJudgeDecisionError();
     currentCycle = insertBetween(currentCycle, decision.chosenEdge, bead);
@@ -152,6 +179,16 @@ export async function mergeBracelets(args: {
       });
     }
     turns.push(base);
+    if (promptContext && renderedPrompt)
+      promptEvents.push(
+        buildJudgePromptTraceEvent({
+          context: promptContext,
+          renderedPrompt,
+          decision,
+          turn: base,
+          offeredEdges: dealerResult.offeredEdges,
+        }),
+      );
   }
   return {
     bracelet: {
@@ -160,5 +197,6 @@ export async function mergeBracelets(args: {
       depth: Math.max(args.target.depth, args.source.depth) + 1,
     },
     turns,
+    promptEvents,
   };
 }

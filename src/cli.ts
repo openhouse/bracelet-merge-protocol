@@ -5,6 +5,7 @@ import { runMany } from "./engine/runMany.js";
 import { parseValues } from "./domain/values.js";
 import { formatRunSummary } from "./output/format.js";
 import { formatTurnTrace } from "./output/trace.js";
+import { formatJudgePromptDialog, writePromptJsonl, writePromptMarkdown } from "./prompt/events.js";
 import type { HostPolicy, MergeMode } from "./domain/types.js";
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const program = new Command();
@@ -36,7 +37,17 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     .option("--jsonl <path>")
     .option("--metrics-csv <path>")
     .option("--turns-csv <path>")
-    .option("--summary-json <path>");
+    .option("--summary-json <path>")
+    .option("--judge-prompt-trace")
+    .option("--prompt-trace")
+    .option("--judge-prompt-jsonl <path>")
+    .option("--prompt-jsonl <path>")
+    .option("--judge-prompt-md <path>")
+    .option("--prompt-md <path>")
+    .option("--judge-template <path>")
+    .option("--prompt-template <path>")
+    .option("--judge-prompt-values")
+    .option("--prompt-values");
   program.parse(argv, { from: "user" });
   const opts = program.opts<Record<string, unknown>>();
   try {
@@ -58,6 +69,19 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       throw new Error("Invalid mode: expected frontier or all");
     if (opts.hostPolicy !== "larger" && opts.hostPolicy !== "first")
       throw new Error("Invalid host-policy: expected larger or first");
+    const promptValues = Boolean(opts.judgePromptValues || opts.promptValues);
+    if (promptValues && (opts.hideValues || opts.blind || opts.audit === false))
+      throw new Error(
+        "--judge-prompt-values cannot be combined with --hide-values, --blind, or --no-audit.",
+      );
+    const promptEnabled = Boolean(
+      opts.judgePromptTrace ||
+      opts.promptTrace ||
+      opts.judgePromptJsonl ||
+      opts.promptJsonl ||
+      opts.judgePromptMd ||
+      opts.promptMd,
+    );
     const raw = (opts.bag ?? opts.values ?? opts.letters) as string | undefined;
     const result = await runMany({
       seed: opts.seed as string,
@@ -71,19 +95,29 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       hideValues: Boolean(opts.hideValues || opts.blind || opts.audit === false),
       audit: opts.audit as boolean | undefined,
       order: opts.order ? parseValues(opts.order as string) : undefined,
+      judgePromptTrace: promptEnabled,
+      judgePromptValues: promptValues,
+      judgeTemplatePath: (opts.judgeTemplate ?? opts.promptTemplate) as string | undefined,
     });
     if (opts.metricsJsonl || opts.jsonl)
       writeJsonl((opts.metricsJsonl ?? opts.jsonl) as string, result.events);
     if (opts.metricsCsv || opts.turnsCsv)
       writeTurnsCsv((opts.metricsCsv ?? opts.turnsCsv) as string, result.turns);
     if (opts.summaryJson) writeSummaryJson(opts.summaryJson as string, result.summaries);
+    if (opts.judgePromptJsonl || opts.promptJsonl)
+      writePromptJsonl((opts.judgePromptJsonl ?? opts.promptJsonl) as string, result.promptEvents);
+    if (opts.judgePromptMd || opts.promptMd)
+      writePromptMarkdown((opts.judgePromptMd ?? opts.promptMd) as string, result.promptEvents);
     if (!opts.quiet) {
       const hide = Boolean(opts.hideValues || opts.blind || opts.audit === false);
-      console.log(
+      const parts = [
         opts.summaryOnly
           ? formatRunSummary(result, hide)
           : `${formatRunSummary(result, hide)}\n${formatTurnTrace(result, hide)}`,
-      );
+      ];
+      if (opts.judgePromptTrace || opts.promptTrace)
+        parts.push(result.promptEvents.map(formatJudgePromptDialog).join("\n\n"));
+      console.log(parts.filter(Boolean).join("\n"));
     }
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));

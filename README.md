@@ -90,3 +90,33 @@ The async Judge interface is ready for network calls, retries, parsing, confiden
 ## Status
 
 Private experimental research prototype, not a proof and not a production sorting package.
+
+## Judge prompt trace
+
+The Judge prompt trace renders each Judge turn as if the Dealer were presenting a local multiple-choice insertion question to a future LLM Judge. It shows the candidate bead and Dealer-offered insertion edges, then records the Judge’s chosen edge and optional audit scoring.
+
+The prompt trace is for inspection, replay, and future prompt experiments. It does not call an LLM. The active simulator still uses the configured Judge, such as `OracleJudge`, and prompt rendering does not affect merge behavior.
+
+Prompt traces keep the protocol views separate: the Dealer-offered edges are rendered as a local Judge question, audit scoring is attached only after the Judge response, and the full bracelet topology is intentionally omitted from the prompt by default.
+
+CLI flags:
+
+- `--judge-prompt-trace` prints a human-readable Dealer/Judge/Audit dialog to stdout.
+- `--judge-prompt-jsonl <path>` writes one `judgePrompt` event per line for replayable prompt datasets.
+- `--judge-prompt-md <path>` writes a Markdown/text dialogue transcript.
+- `--judge-template <path>` loads a custom Handlebars prompt template.
+- `--judge-prompt-values` includes candidate and endpoint values in the Judge-facing prompt.
+
+By default, prompt traces are ID-only. ID-only prompt traces are useful for inspecting prompt shape and output sanitization, but they are not sufficient for a real value-aware LLM Judge to choose correctly. Value-bearing prompt traces must be requested explicitly with `--judge-prompt-values`.
+
+Hidden-value modes are redacted: `--hide-values`, `--blind`, and `--no-audit` must not leak hidden values in prompt traces. For that reason, `--judge-prompt-values` fails clearly when combined with any of those flags.
+
+Examples:
+
+```sh
+bracelet-merge --fixture=desk --judge-prompt-trace --summary-only
+bracelet-merge --fixture=desk --judge-prompt-trace --judge-prompt-values --summary-only
+bracelet-merge --fixture=canonical --judge-prompt-jsonl=out/judge-prompts.jsonl --judge-prompt-values --summary-only
+bracelet-merge --fixture=canonical --judge-prompt-md=out/judge-dialog.md --judge-prompt-jsonl=out/judge-prompts.jsonl --judge-prompt-values --summary-only
+bracelet-merge --fixture=canonical --judge-prompt-trace --judge-template=templates/my-judge-template.hbs --judge-prompt-values
+```
