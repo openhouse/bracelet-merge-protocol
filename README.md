@@ -16,7 +16,7 @@ The carrier remains conceptually closed while the Dealer records a virtual merge
 
 ## Roles: Dealer, Judge, Audit
 
-The blind Dealer sees bead IDs and topology only. The sighted Judge sees hidden values and chooses one offered insertion edge. Audit code may verify sortedness and emit study fields when values are not hidden.
+The blind Dealer sees bead IDs and topology only. The sighted Judge sees hidden values and chooses one offered insertion edge. Audit code may verify sortedness and emit study fields when values are not hidden. The active Judge chooses an edge; a separate optional audit oracle scores whether that edge was correct. If no audit oracle is present, correctness scoring is marked unavailable rather than self-certified.
 
 ## What is an insertion edge?
 
@@ -40,7 +40,7 @@ A merge inserts Source beads, in stored Source order, into the Target bracelet u
 
 ## Merge modes: frontier and all
 
-`frontier` offers topological-embedding-preserving edges. `all` offers every current edge as a baseline for Judge burden.
+`frontier` offers only edges that preserve both the Target bracelet cyclic order and the already-threaded Source-prefix cyclic order. Source prefixes of length 0, 1, 2, or 3 are intentionally unconstraining because all such bracelets are equivalent up to rotation/reflection. `all` offers every current edge as a baseline for Judge burden, so invalid-frontier edges in `all` are expected baseline burden rather than Dealer leakage.
 
 ## Blindness boundary
 
@@ -60,10 +60,10 @@ npm run build
 ## CLI examples
 
 ```bash
-npm run cli -- --fixture=canonical --metrics
-npm run cli -- --fixture=desk --hide-values --summary-only
-npm run cli -- --bag Q,B,M,H,Z,D,R,G,L,T,A,K --summary-only
-npm run cli -- --runs=10 --summary-only --metrics-jsonl=out/events.jsonl --metrics-csv=out/turns.csv --summary-json=out/summary.json
+bracelet-merge --fixture=canonical --metrics
+bracelet-merge --fixture=desk --hide-values --summary-only
+bracelet-merge --bag Q,B,M,H,Z,D,R,G,L,T,A,K --order A,B,D,G,H,K,L,M,Q,R,T,Z --summary-only
+bracelet-merge --runs=10 --summary-only --metrics-jsonl=out/events.jsonl --metrics-csv=out/turns.csv --summary-json=out/summary.json
 ```
 
 ## Library usage
@@ -78,6 +78,10 @@ console.log(result.summary.finalSorted);
 ## Metrics glossary
 
 Priority Dealer metrics include correct edge inclusion, invalid edge leakage, and offered-edge burden. Turn, merge, run, and aggregate events are emitted with `schemaVersion = 1`.
+
+## Hide-values / no-audit semantics
+
+`--hide-values` hides value-derived study fields in console and output files. `--blind` is an alias. `--no-audit` disables audit scoring and also uses hidden-value output sanitization. Programmatic `runOnce` results still include `hiddenValues` and `sortedValues`; hide-values is an output-sanitization mode for CLI/reporting surfaces.
 
 ## Future LLM judge
 

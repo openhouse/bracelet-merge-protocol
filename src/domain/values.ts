@@ -1,11 +1,14 @@
 import type { BeadId, BeadValue, HiddenValues } from "./types.js";
 export const DEFAULT_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-export const parseValues = (raw: string): BeadValue[] =>
-  raw
-    .split(/[,,\s]+/)
+export const parseValues = (raw: string): BeadValue[] => {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  const tokens = /[,\s]/.test(trimmed) ? trimmed.split(/[,\s]+/).filter(Boolean) : [...trimmed];
+  return tokens
     .map((s) => s.trim())
     .filter(Boolean)
     .map((s) => s as BeadValue);
+};
 export function assertDistinctValues(values: readonly BeadValue[]): void {
   if (new Set(values).size !== values.length) throw new Error("Duplicate values are not supported");
 }

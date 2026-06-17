@@ -6,7 +6,15 @@ import {
   assertCycleIntegrity,
 } from "./cycle.js";
 import { turnId as makeTurnId, braceletName } from "./ids.js";
-import type { BeadId, Bracelet, HiddenValues, Judge, MergeMode, TurnContext } from "./types.js";
+import type {
+  AuditOracle,
+  BeadId,
+  Bracelet,
+  HiddenValues,
+  Judge,
+  MergeMode,
+  TurnContext,
+} from "./types.js";
 import { OffMenuJudgeDecisionError } from "./errors.js";
 import { BlindDealer } from "../dealer/BlindDealer.js";
 import type { TurnMetric } from "../metrics/types.js";
@@ -23,6 +31,7 @@ export async function mergeBracelets(args: {
   mergeIndex: number;
   hideValues?: boolean | undefined;
   hiddenValues?: HiddenValues | undefined;
+  auditOracle?: AuditOracle | undefined;
 }): Promise<MergeResult> {
   const dealer = new BlindDealer({
     beadIds: [...args.target.ids, ...args.source.ids],
@@ -63,14 +72,8 @@ export async function mergeBracelets(args: {
       throw new OffMenuJudgeDecisionError();
     currentCycle = insertBetween(currentCycle, decision.chosenEdge, bead);
     assertCycleIntegrity(currentCycle);
-    const oracle =
-      "correctEdge" in args.judge && typeof args.judge.correctEdge === "function"
-        ? (args.judge.correctEdge as (c: readonly BeadId[], b: BeadId) => { a: BeadId; b: BeadId })(
-            before,
-            bead,
-          )
-        : decision.chosenEdge;
-    const oracleKey = edgeKey(oracle.a, oracle.b);
+    const oracle = args.auditOracle?.correctEdge(before, bead);
+    const oracleKey = oracle ? edgeKey(oracle.a, oracle.b) : undefined;
     const chosenIndex = dealerResult.offeredEdges.findIndex(
       (e) => e.key === decision.chosenEdge.key,
     );
@@ -109,9 +112,14 @@ export async function mergeBracelets(args: {
       chosenEdge: { a: decision.chosenEdge.a, b: decision.chosenEdge.b },
       oracleEdgeKey: oracleKey,
       oracleEdge: oracle,
-      oracleEdgeOffered: dealerResult.offeredEdges.some((e) => e.key === oracleKey),
-      correctEdgeIncluded: dealerResult.offeredEdges.some((e) => e.key === oracleKey),
-      chosenEdgeIsCorrect: decision.chosenEdge.key === oracleKey,
+      oracleEdgeOffered: oracleKey
+        ? dealerResult.offeredEdges.some((e) => e.key === oracleKey)
+        : undefined,
+      correctEdgeIncluded: oracleKey
+        ? dealerResult.offeredEdges.some((e) => e.key === oracleKey)
+        : undefined,
+      chosenEdgeIsCorrect: oracleKey ? decision.chosenEdge.key === oracleKey : undefined,
+      scoringAvailable: Boolean(oracleKey),
       invalidEdgesOfferedCount: dealerResult.invalidEdgesOfferedCount,
       duplicateEdgesOfferedCount: dealerResult.duplicateEdgeCount,
       frontierViolations: dealerResult.frontierViolations,
@@ -140,7 +148,7 @@ export async function mergeBracelets(args: {
         studyCurrentValuesBefore: before.map((id) => v.get(id)!),
         studyCurrentValuesAfter: currentCycle.map((id) => v.get(id)!),
         studyChosenEdgeValues: [v.get(decision.chosenEdge.a)!, v.get(decision.chosenEdge.b)!],
-        studyOracleEdgeValues: [v.get(oracle.a)!, v.get(oracle.b)!],
+        ...(oracle ? { studyOracleEdgeValues: [v.get(oracle.a)!, v.get(oracle.b)!] } : {}),
       });
     }
     turns.push(base);

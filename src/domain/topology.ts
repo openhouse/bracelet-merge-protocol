@@ -11,6 +11,14 @@ export const targetOrderOk = (
   targetCycle: readonly BeadId[],
 ): boolean =>
   sameUnorientedCycle(restrictedCycle(candidateCycle, new Set(targetCycle)), targetCycle);
+/**
+ * Source-prefix invariant: after inserting the next source bead, restricting the
+ * merged bracelet to the already-threaded source prefix must be the same
+ * unoriented bracelet as the stored source prefix. Prefix lengths 0..3 are
+ * intentionally unconstraining: every cycle of at most three distinct beads is
+ * equivalent up to rotation/reflection, so there is no crossing/order witness
+ * yet in the physical bracelet model.
+ */
 export const sourcePrefixOk = (
   candidateCycle: readonly BeadId[],
   sourcePrefix: readonly BeadId[],
@@ -20,8 +28,9 @@ export const sourcePrefixOk = (
 export const topologicalEmbeddingExists = (
   candidateCycle: readonly BeadId[],
   targetCycle: readonly BeadId[],
-  _sourcePrefix: readonly BeadId[],
-): boolean => targetOrderOk(candidateCycle, targetCycle);
+  sourcePrefix: readonly BeadId[],
+): boolean =>
+  targetOrderOk(candidateCycle, targetCycle) && sourcePrefixOk(candidateCycle, sourcePrefix);
 export function validEdgesForNextBead(args: {
   currentCycle: readonly BeadId[];
   nextBead: BeadId;
