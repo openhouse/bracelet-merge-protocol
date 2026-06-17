@@ -15,7 +15,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "bracelet-merge-protocol": "./dist/cli.js"
+    "bracelet-merge": "./dist/cli.js"
   },
   "files": [
     "dist",

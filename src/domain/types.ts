@@ -53,3 +53,6 @@ export type JudgeDecision = {
 export interface Judge {
   chooseEdge(request: JudgeRequest): Promise<JudgeDecision>;
 }
+export type AuditOracle = {
+  correctEdge(currentCycle: readonly BeadId[], bead: BeadId): Edge;
+};

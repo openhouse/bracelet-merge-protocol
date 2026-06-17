@@ -10,7 +10,15 @@ import { makeSeededRng, shuffle } from "../domain/rng.js";
 import { isCyclicallySortedUnoriented, canonicalSortedValues } from "../domain/sortedness.js";
 import { OracleJudge } from "../judge/OracleJudge.js";
 import { summarizeRun } from "../metrics/summarize.js";
-import type { BeadValue, Bracelet, HiddenValues, HostPolicy, MergeMode } from "../domain/types.js";
+import type {
+  AuditOracle,
+  BeadValue,
+  Bracelet,
+  HiddenValues,
+  HostPolicy,
+  Judge,
+  MergeMode,
+} from "../domain/types.js";
 import type { MetricEvent, RunMetric, TurnMetric } from "../metrics/types.js";
 import { canonicalFixture, deskFixture } from "../domain/fixtures.js";
 export type RunOnceOptions = {
@@ -24,6 +32,9 @@ export type RunOnceOptions = {
   hostPolicy?: HostPolicy;
   hideValues?: boolean | undefined;
   audit?: boolean | undefined;
+  judge?: Judge | undefined;
+  auditOracle?: AuditOracle | undefined;
+  order?: readonly BeadValue[] | undefined;
 };
 export type RunOnceResult = {
   finalBracelet: Bracelet;
@@ -49,10 +60,15 @@ export async function runOnce(options: RunOnceOptions = {}): Promise<RunOnceResu
             makeSeededRng(seed),
           ));
   const ids = makeBeadIds(values.length);
-  const hiddenValues = makeHiddenValues(ids, values, [...values].sort());
+  const hiddenValues = makeHiddenValues(ids, values, options.order ?? [...values].sort());
   let bracelets =
     options.fixture === "desk" ? deskFixture.bracelets : makeInitialBracelets(ids, chunkSize);
-  const judge = new OracleJudge(hiddenValues);
+  const defaultOracle = new OracleJudge(hiddenValues);
+  const judge = options.judge ?? defaultOracle;
+  const auditOracle =
+    options.audit === false
+      ? undefined
+      : (options.auditOracle ?? (options.judge ? undefined : defaultOracle));
   const turns: TurnMetric[] = [];
   const events: MetricEvent[] = [];
   let mergeIndex = 0;
@@ -76,6 +92,7 @@ export async function runOnce(options: RunOnceOptions = {}): Promise<RunOnceResu
       mergeIndex,
       hideValues: options.hideValues,
       hiddenValues,
+      auditOracle,
     });
     turns.push(...result.turns);
     events.push(...result.turns, {

@@ -35,6 +35,7 @@ export const stableTurnHeaders = [
   "oracleEdgeOffered",
   "correctEdgeIncluded",
   "chosenEdgeIsCorrect",
+  "scoringAvailable",
   "invalidEdgesOfferedCount",
   "duplicateEdgesOfferedCount",
   "frontierViolations",

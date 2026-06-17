@@ -41,11 +41,12 @@ export type TurnMetric = {
   normalizedChosenPosition: number;
   chosenEdgeKey: string;
   chosenEdge: Edge;
-  oracleEdgeKey: string;
-  oracleEdge: Edge;
-  oracleEdgeOffered: boolean;
-  correctEdgeIncluded: boolean;
-  chosenEdgeIsCorrect: boolean;
+  oracleEdgeKey?: string | undefined;
+  oracleEdge?: Edge | undefined;
+  oracleEdgeOffered?: boolean | undefined;
+  correctEdgeIncluded?: boolean | undefined;
+  chosenEdgeIsCorrect?: boolean | undefined;
+  scoringAvailable: boolean;
   invalidEdgesOfferedCount: number;
   duplicateEdgesOfferedCount: number;
   frontierViolations: number;
@@ -87,7 +88,8 @@ export type RunMetric = {
   turnCount: number;
   mergeCount: number;
   correctEdgeInclusionRate: number;
-  judgeAccuracy: number;
+  judgeAccuracy: number | null;
+  scoredTurnCount: number;
   invalidEdgesOffered: number;
   duplicateEdgesOffered: number;
   braceletIntegrityFailures: number;

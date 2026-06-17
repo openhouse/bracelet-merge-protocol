@@ -11,13 +11,21 @@ export function summarizeRun(
 ): RunMetric {
   const turnCount = turns.length;
   const sum = (f: (t: TurnMetric) => number) => turns.reduce((a, t) => a + f(t), 0);
+  const scored = turns.filter((t) => t.scoringAvailable);
+  const scoredCount = scored.length;
+  const scoredSum = (f: (t: TurnMetric) => number) => scored.reduce((a, t) => a + f(t), 0);
   return {
     event: "run",
     schemaVersion: 1,
     ...base,
     turnCount,
-    correctEdgeInclusionRate: turnCount ? sum((t) => Number(t.correctEdgeIncluded)) / turnCount : 1,
-    judgeAccuracy: turnCount ? sum((t) => Number(t.chosenEdgeIsCorrect)) / turnCount : 1,
+    correctEdgeInclusionRate: scoredCount
+      ? scoredSum((t) => Number(t.correctEdgeIncluded)) / scoredCount
+      : 0,
+    judgeAccuracy: scoredCount
+      ? scoredSum((t) => Number(t.chosenEdgeIsCorrect)) / scoredCount
+      : null,
+    scoredTurnCount: scoredCount,
     invalidEdgesOffered: sum((t) => t.invalidEdgesOfferedCount),
     duplicateEdgesOffered: sum((t) => t.duplicateEdgesOfferedCount),
     braceletIntegrityFailures: sum((t) => Number(!t.braceletIntegrityOk)),
@@ -35,7 +43,10 @@ export function aggregateRuns(runs: readonly RunMetric[]): AggregateMetric {
     turnCount: sum((r) => r.turnCount),
     mergeCount: sum((r) => r.mergeCount),
     correctEdgeInclusionRate: sum((r) => r.correctEdgeInclusionRate) / n,
-    judgeAccuracy: sum((r) => r.judgeAccuracy) / n,
+    judgeAccuracy: runs.some((r) => r.judgeAccuracy !== null)
+      ? sum((r) => r.judgeAccuracy ?? 0) / runs.filter((r) => r.judgeAccuracy !== null).length
+      : null,
+    scoredTurnCount: sum((r) => r.scoredTurnCount),
     invalidEdgesOffered: sum((r) => r.invalidEdgesOffered),
     duplicateEdgesOffered: sum((r) => r.duplicateEdgesOffered),
     braceletIntegrityFailures: sum((r) => r.braceletIntegrityFailures),
